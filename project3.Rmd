@@ -1,0 +1,533 @@
+Project 3 - Exploring Prosper Loan Data by Li Liang
+========================================================
+I chose the Prosper loan data for project 3. I wanted to explore the p2p lender's data to find insights related to the borrowers and the loans they broker. At quick glance, there are over 100k rows of loans and 81 variables. I initally choose way too many variables (30+) and through exploratory analysis, whittled it down to 20 variables and even created a few variables. Let's begin.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(corrplot)
+```
+
+```{r echo=FALSE, Load_the_Data}
+setwd('c:/users/li/downloads')
+loans <- read.csv('loans.csv')
+l <- select(loans, ListingCategory..numeric.,
+            EmploymentStatusDuration,
+            CreditScoreRangeLower,
+            CreditScoreRangeUpper,
+            CurrentCreditLines,
+            DebtToIncomeRatio,
+            StatedMonthlyIncome,
+            BorrowerState,
+            Occupation,
+            EmploymentStatus,
+            IsBorrowerHomeowner,
+            IncomeRange,
+            IncomeVerifiable,
+            BorrowerAPR,
+            BorrowerRate,
+            Term,
+            LoanStatus,
+            LoanOriginalAmount,
+            LoanOriginationDate,
+            MonthlyLoanPayment
+)
+l$Term <- factor(l$Term)
+l$ListingCategory..numeric. <- factor(l$ListingCategory..numeric.)
+cats <- c('0 - Not Available', '1 - Debt Consolidation', '2 - Home Improvement', '3 - Business', '4 - Personal Loan', '5 - Student Use', '6 - Auto', '7- Other', '8 - Baby&Adoption', '9 - Boat', '10 - Cosmetic Procedure', '11 - Engagement Ring', '12 - Green Loans', '13 - Household Expenses', '14 - Large Purchases', '15 - Medical/Dental', '16 - Motorcycle', '17 - RV', '18 - Taxes', '19 - Vacation', '20 - Wedding Loans') 
+summary(l)
+str(l)
+```
+
+# Univariate Plots Section
+```{r, Loan Amounts, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=LoanOriginalAmount)) +geom_bar(binwidth=700)
+```
+
+Loan amount exhibits positive skew, mean 8300 > median 6500.
+
+
+```{r, Loan Payments, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=MonthlyLoanPayment)) +geom_bar(binwidth=20) +xlim(0, 1500)
+```
+
+Monthly loan payments exhibits positive skew, mean 272 > median 217.
+
+```{r, Credit Scores, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=CreditScoreRangeLower)) +geom_bar(binwidth=5) + xlim(400, 880)
+
+```
+
+Credit ranges are normally distributed with mean/med = 685/680. It seem they have common intervals and are bunched as such. 
+Note: I only use CreditScoreRangeLower throughout this analysis. CreditScoreRangeHigher has very similar distribution but 20 points higher. 
+
+```{r, Borrower Interest Rate, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=BorrowerRate)) +geom_bar(binwidth=.01)
+```
+
+Interest rate are normally distributed mean/med = .19 However, there is a spike around .31.  I'll take a closer look in bivarate section.
+
+```{r, Debt to Income Ratio, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=DebtToIncomeRatio)) +geom_bar() + xlim(0, 1.5)
+```
+
+DI ratio exhibits slight positive skew mean .27 > median .22. There are more people with DI < 0.5.
+
+
+```{r, Stated Monthly Income, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=StatedMonthlyIncome)) +geom_bar() +xlim(0, 20000)
+```
+
+Monthly income exhibits positive skew mean 5600 > median 4666. 
+
+```{r,   estimated monthly debt, echo=FALSE, message=FALSE , warning=FALSE}
+l$TotalMonthlyDebt<- l$DebtToIncomeRatio * l$StatedMonthlyIncome
+
+ggplot(data=subset(l, !is.na(TotalMonthlyDebt)), aes(x=TotalMonthlyDebt)) +geom_bar(binwidth=100) + xlim(0, 4000)
+
+summary(l$TotalMonthlyDebt)
+```
+
+I created the variable TotalMonthlyDebt to estimate the monthly debt at inception of loan by multiplying the DI ratio by the stated monthly income. The resulting distribution is positively skewed. 
+
+```{r, Employment Status Duration, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=EmploymentStatusDuration)) +geom_bar(binwidth=1)
+```
+
+Employment duration exhibits positive skew mean 96 > median 67. It seems that more people that are employed shorter durations.
+
+```{r, Credit Lines, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=CurrentCreditLines)) +geom_bar(binwidth=1)
+```
+
+Current credit lines has a slight positive skew and the mean/med = 10.
+
+
+```{r, Monthly, Years, echo=FALSE, message=FALSE , warning=FALSE}
+l$ldate <- ymd_hms(l$LoanOriginationDate)
+l$LoanMonth <- factor(month(l$ldate))
+l$LoanYear <- factor(year(l$ldate))
+
+ggplot(data=l, aes(x=LoanMonth)) +geom_bar()
+
+
+ggplot(data=l, aes(x=LoanYear)) +geom_bar()
+```
+
+I decomposed loan origination date using lubridate and plotted by month and year.
+I observed seasonality in the loans by month by during the holiday season. 
+It is also interesting in the loans by year plot that the loans dropped off in 2009. I would guess that is a supeopley side shortage due to the Financial Crisis. What do you think? (Hint: I'm wrong.)
+
+
+```{r, Status, echo=FALSE, message=FALSE , warning=FALSE}
+
+table(l$LoanStatus)
+
+```
+
+Most loans in the whole data set are completed and current. Later I will break it down by year. 
+
+
+```{r,  Tables, echo=FALSE, message=FALSE , warning=FALSE}
+print('# of Loans by Income Range')
+summary(l$IncomeRange)
+print('# of Loans by Term (months)')
+summary(l$Term)
+```
+
+Income range is mostly in the middle from $25k-75k with mostly 3 year loans. 
+
+
+```{r,  loan count vs date by term, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=ldate, fill=l$Term)) +geom_bar() + scale_fill_discrete(name="Loan Term (Months)") + xlab("")
+```
+
+Graph of loan term by year.
+
+
+```{r,  Loan Category, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=ListingCategory..numeric., fill=ListingCategory..numeric.)) +geom_bar() + scale_fill_discrete(name="Loan Category", labels=cats)
+
+Loansbydollar <- l %>%
+  group_by(ListingCategory..numeric.) %>%
+    summarise(DollarTotal=sum(LoanOriginalAmount), CountTotal=n()) %>%
+  arrange(desc(DollarTotal, CountTotal))
+
+Loansbydollar
+
+```
+
+Debt consolidation by far is the leading loan category in number of loans and $ amount. But it seems there are a lot of loans not classified. More on this in the multivarate section.
+
+```{r,  re, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=LoanYear, fill=LoanStatus)) +geom_bar() 
+```
+
+Loan status broken down by year you can see more texture: most defaults occurred in 2006-2008.
+
+```{r, defaults, echo=FALSE, message=FALSE , warning=FALSE}
+Default <- l %>%
+  group_by(LoanYear) %>%
+   filter(LoanStatus=="Defaulted")  %>% 
+  summarise(CountTotal=n()) %>%   
+  arrange(desc(LoanYear))
+
+Total <- l %>%
+  group_by(LoanYear) %>% 
+  summarise(CountTotal=n()) %>%   
+  arrange(desc(LoanYear))
+
+Joined <- Total %>%
+  left_join(Default, by="LoanYear")
+
+Joined$Percent <- Joined$CountTotal.y/Joined$CountTotal.x
+
+Defaulted <- l %>%
+  group_by(LoanYear) %>%
+  summarise(CountTotal=n(), 
+            DefaultTotal = sum(LoanStatus=="Defaulted")) %>%
+  mutate(DefaultedPercent = DefaultTotal/CountTotal)
+
+ggplot(data=Defaulted, aes(x=LoanYear, y=DefaultedPercent, group=1)) + geom_line()
+
+```
+
+I created the variable DefaultedPercent to show default rates over each year. Prosper default rates seems to have decreased dramatically over the years. 
+
+```{r, States, echo=FALSE, message=FALSE , warning=FALSE}
+topstates <- l  %>% group_by(BorrowerState)  %>% summarise(count=n()) %>% arrange(desc(count)) %>% top_n(5)
+    
+ggplot(data=topstates, aes(x=BorrowerState, y=count)) +geom_bar(stat='identity')
+```
+
+I selected the top 5 states. California dominates this category.
+
+
+```{r, Jobs, echo=FALSE, message=FALSE , warning=FALSE}
+topoccupation <- l  %>% group_by(Occupation)  %>% summarise(count=n()) %>% arrange(desc(count)) %>% top_n(5)
+ggplot(data=topoccupation, aes(x=Occupation, y=count)) +geom_bar(stat='identity')
+```
+
+Top 5 Occupations but data seems incomplete. 
+
+
+
+```{r, employment homeowner, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=EmploymentStatus, fill=EmploymentStatus)) +geom_bar() +scale_x_discrete(labels="")
+print('Is the borrower a homeowner? ')
+summary(l$IsBorrowerHomeowner)
+```
+
+Demographic is mostly employed and about half are homeowners.
+
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+
+There are 113,937 loans in the dataset. I choose with 20 features out of 81, listed below. 10 being continuous variables and 10 being discrete variables or factors.
+
+Continuous Variables:
+
+EmploymentStatusDuration
+CreditScoreRangeLower
+CreditScoreRangeUpper
+CurrentCreditLines
+DebtToIncomeRatio
+StatedMonthlyIncome
+BorrowerAPR
+BorrowerRate
+LoanOriginalAmount
+MonthlyLoanPayment
+
+Discrete Variables:
+
+BorrowerState
+Occupation
+EmploymentStatus
+IsBorrowerHomeowner
+IncomeRange
+IncomeVerifiable
+Term
+ListingCategory
+LoanStatus
+LoanOriginationDate
+
+Most loans have terms of 3 years and are under $10k (with the median being 6500). Most have monthly payments of usually < $500 (median of $217) and paying the median interest rate of 18%.
+Out of 17 categories of loans, the majority of the loans are classified under debt consolidation (51%)
+Borrowers tend to have credit scores in the IQR of 660-720 (using creditscorerangelower). The borrower median monthly income is 4667, 28% earns $25-50k and 27% earns $50-75K. 88% are employed in some way (employed, full-time or self-employed).
+
+
+### What is/are the main feature(s) of interest in your dataset?
+
+There are a number of features that will give color to the profile of the loan and borrower.
+I think the main ones for borrowers are credit score, debt to income ratio, income and the ones for the loans are loan amount, interest rate, and term.
+
+
+### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+
+Loan category and status can help determine how the loans are being used and what loans are current, defaulted, delinquent etc.
+
+### Did you create any new variables from existing variables in the dataset?
+
+I created TotalMonthlyDebt to estimate the total monthly debt at inception of loan by multiplying the DI ratio by the stated monthly income. The distribution is positively skewed.
+I broke out the loan origination date in LoanYear, LoanMonth using lubridate. This really helped with yearly analysis and seasonality. 
+I also created DefaultedPercent to show the default rates over each year.
+
+
+### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+
+I manually set two numeric categorical variables as a factor so when I plotted them it would look discrete: Term and ListingCategory..numeric.
+
+# Bivariate Plots Section
+```{r, correlation matrix , echo=FALSE, message=FALSE , warning=FALSE}
+col1 <- colorRampPalette(c("#7F0000", "red", "#FF7F00", "yellow", "white", "cyan", 
+    "#007FFF", "blue", "#00007F"))
+col2 <- colorRampPalette(c("#67001F", "#B2182B", "#D6604D", "#F4A582", "#FDDBC7", 
+    "#FFFFFF", "#D1E5F0", "#92C5DE", "#4393C3", "#2166AC", "#053061"))
+col3 <- colorRampPalette(c("red", "white", "blue"))
+col4 <- colorRampPalette(c("#7F0000", "red", "#FF7F00", "yellow", "#7FFF7F", 
+    "cyan", "#007FFF", "blue", "#00007F"))
+wb <- c("white", "black")
+
+df<- data.frame((sapply(l,c)))
+
+M <-cor(df, use="pairwise.complete.obs")
+p = M
+p[is.na(M)]=0.2 
+p[is.na(M)==F]=0
+M[is.na(M)]=0
+corrplot(M, order = "hclust", addrect = 2, col = col4(10))
+
+
+```
+
+Correlation matrix of all variables discrete and continuous. Next few scatterplots will explore the stronger relationships in greater depth. 
+
+```{r,  credit lines vs total month debt, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=CurrentCreditLines, y=TotalMonthlyDebt)) +geom_point(alpha=0.1, size= 1.5, position='jitter') +ylim(0, 7000) + xlim(0, 30)
+```
+
+Positive correlation R^2 of .47. You have more debt as you increase the # of credit lines or vice-versa.
+
+```{r,  credit vs interest rate, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=CreditScoreRangeLower, y=BorrowerRate)) +geom_point(alpha=0.1, size= 1, position='jitter') +xlim (450, 900) 
+```
+
+Negative correlation R^2 of -.46. Makes sense the interest rate is lower for more creditworthy borrowers.
+
+
+```{r,   monthly income vs total debt amount, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=StatedMonthlyIncome, y=TotalMonthlyDebt )) +geom_point(alpha=0.1, size=1.5, position='jitter') +xlim(0, 15000) + ylim(0, 7000) 
+```
+
+Monthly income and total monthly debt has a positive relationship of R^2 of .36. 
+
+```{r,  loan amt vs interest rate, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=LoanOriginalAmount, y=BorrowerRate)) +geom_point(alpha=0.1, size= 1, position='jitter') 
+```
+
+Slight negative correlation R^2 of -.33. Seems counterintuitive, lower interest rate on larger loans. 
+
+
+```{r,  loan amt vs credit score, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=LoanOriginalAmount, y=CreditScoreRangeLower)) +geom_point(alpha=0.1, size= 1, position='jitter') 
+```
+
+Slight positive correlation R^2 of -.33. The larger the loan, the higher the credit score.
+
+
+```{r,   income v d/i ratio, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=StatedMonthlyIncome, y=TotalMonthlyDebt)) +geom_point(alpha=0.1, size=1.5, position='jitter') + xlim(0, 15000) + ylim(0, 7000) + facet_wrap(~IsBorrowerHomeowner)
+```
+
+I plotted total monthly debt vs monthly income facet wrapped by IsBorrowerHomeowner. The homeowners have a higher dispersion whereas the non-homeowners are more concentrated under $5000 income. 
+
+### A closer look at the spike in BorrowerRate 
+
+```{r, closer look, echo=FALSE, message=FALSE , warning=FALSE}
+abc <- subset(l, l$BorrowerRate > 0.3)
+
+ggplot(data=abc, aes(x=BorrowerRate, fill=ListingCategory..numeric.)) + geom_bar() + xlim(0.3, .375) + 
+  scale_fill_discrete(name="Loan Category", labels=cats)
+
+ggplot(data=abc, aes(x=BorrowerRate, fill=LoanYear)) + geom_bar() + xlim(0.3, .375)
+
+
+```
+
+Taking a closer look at spike in the histogram of BorrowerRate, these high interest loans were made mainly for debt consolidation in 2011-2012.
+
+```{r, closer look 2, echo=FALSE, message=FALSE , warning=FALSE}
+abc$CreditScoreRangeLower <- factor(abc$CreditScoreRangeLower)
+ggplot(data=abc, aes(x=BorrowerRate, fill=CreditScoreRangeLower)) + geom_bar() + xlim(0.3, .375)
+
+```
+
+And the credit score ranges are shown, the higher the borrower rate (cost) the worse the credit rating. 
+
+
+```{r,   loan amt and loan year, echo=FALSE, message=FALSE , warning=FALSE}
+#by(l$LoanOriginalAmount, l$LoanYear,summary)
+ggplot(data=l, aes(x=LoanYear,y=LoanOriginalAmount))+ geom_boxplot()
+```
+
+Mean loans amounts dips in 2009 and increased in 2013.
+
+```{r,  agg loan amt and loan year, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=LoanYear, y=LoanOriginalAmount)) +geom_bar(stat='identity')
+```
+
+For comparison, aggregate loans amounts dips in 2009 and increases sharply in 2013, from $150M to $300M.
+
+```{r,  loan amt over date by cat, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=l, aes(x=ldate, y=LoanOriginalAmount)) +geom_bar(stat='identity') + xlab("")
+```
+
+Investigating further, I graphed every loan by date, it shows a gap in service between November 2008 and July 2009. After doing some research on Wikipedia, there was a cease and desist from the SEC regarding the p2p lending model. 
+
+```{r,  loan amt by month, echo=FALSE, message=FALSE , warning=FALSE }
+ggplot(data=l, aes(x=LoanMonth,y=LoanOriginalAmount))+ geom_boxplot()
+```
+
+Shows the seasonality of increased average loan amounts and variance during the holiday seasons and a pull back during the spring and summer months.
+
+
+```{r, category vs loan amt, echo=FALSE, message=FALSE , warning=FALSE   }
+ggplot(data=l, aes(x=ListingCategory..numeric.,y=LoanOriginalAmount, fill=ListingCategory..numeric.,)) + 
+  geom_boxplot() + 
+  scale_fill_discrete(name="Loan Category", labels=cats)
+```
+
+1. Debt consolidation and 8. Baby/Adoption are the category with the top amounts. ~$9k on average. 
+
+
+```{r,  emp status and loan amount, echo=FALSE, message=FALSE , warning=FALSE }
+ggplot(data=subset(l, !is.na(l$EmploymentStatus)), aes(x=EmploymentStatus,y=LoanOriginalAmount, color=EmploymentStatus))+ geom_boxplot() +scale_x_discrete(labels="")
+```
+
+Employed and fulltime on average take out larger loans.
+
+
+```{r,  income range  and loan amount, echo=FALSE, message=FALSE , warning=FALSE }
+ggplot(data=l, aes(x=IncomeRange,y=LoanOriginalAmount, color=IncomeRange))+ geom_boxplot()  +scale_x_discrete(labels="")
+```
+
+Larger incomes take out larger loans on average.
+
+
+```{r,  term vs loan amt, echo=FALSE, message=FALSE , warning=FALSE }
+
+ggplot(data=l, aes(x=Term,y=LoanOriginalAmount))+ geom_boxplot()
+```
+
+As the term is longer, the loan amounts are larger.
+
+```{r,  term vs interest rate, echo=FALSE, message=FALSE , warning=FALSE }
+
+ggplot(data=l, aes(x=Term,y=BorrowerRate))+ geom_boxplot()
+```
+
+But not necessarily more expensive. The mean interest rate moves up slightly at the 5 year term and the variance is smaller.
+
+```{r,  term vs credit score, echo=FALSE, message=FALSE , warning=FALSE }
+ggplot(data=l, aes(x=Term,y=CreditScoreRangeLower))+ geom_boxplot() +ylim(450, 900)
+```
+
+5 year borrowers seem to be more credit-worthy on average and also the variance is smaller. 
+
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+- There's a strong positive relationship between open credit lines and total monthly debt.
+
+- There's a negative relationship between interest rates and loan amount, the larger the loan, the lower the rate on average. That was mostly due to them having higher credit scores. 
+
+- Monthly income and monthly debt have a positive relationship and levels off after a certain point.
+
+- Average loan amounts and variance are seasonal (higher during holidays)
+
+- People who are employed and fulltime on average take out larger loans than other groups.
+
+- There is a strong positive relationship between term and loan amount (longer the term, the larger the loan) 
+
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+
+I observed that in 2009 there was a large dip in loan origination. After further investigation, it was related to a cease and desist order by the SEC regarding the nature of the P2P lending model.  
+
+### What was the strongest relationship you found?
+
+The strongest relationship I found was between credit score and interest rate, with R^2 .46. This makes sense since credit score is a rating of the credit-worthiness of the borrower and that should be directly related to the cost of borrowing (interest rate)
+Also, between open credit lines and total monthly deb with R^2 of .47. 
+
+# Multivariate Plots Section
+
+```{r, Borrowers segmentation, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=subset(l, l$CreditScoreRangeLower > 660), aes(x=LoanOriginalAmount, y=BorrowerRate, color=CreditScoreRangeLower)) +geom_point(alpha=0.5, position='jitter') + scale_colour_gradient(low="blue", high="red") +ggtitle("Loan Amount by Credit Score and Interest Rate")
+```
+
+The borrowers with high credit scores are on the bottom right. They generally have lower interest rates and larger loan amounts. I subsetted only credit scores from 660 (1st quartile) and above for better visual presentation. 
+
+
+```{r,  loan amt over year by cat, echo=FALSE, message=FALSE , warning=FALSE}
+byyear <- l %>%
+  group_by(LoanYear, ListingCategory..numeric.) %>%
+    summarise(DollarTotal=sum(LoanOriginalAmount), CountTotal=n()) %>%
+  arrange(desc(DollarTotal, CountTotal))
+
+
+ggplot(data=byyear, aes(x=LoanYear, y=DollarTotal, fill=ListingCategory..numeric.)) +geom_bar(stat='identity') + scale_fill_discrete(name="Loan Category", labels=cats)+ggtitle("Loan Amount by Credit Score and Interest Rate")
+```
+
+I bucketed categories by year and you can clearly see that it looks like pre-2008 they did not capture the loan category and debt consolidation dominated the cateogory every year subsequently.
+
+
+```{r,  loan amt vs interest rate by credit score, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=subset(l, l$CreditScoreRangeLower < 880 & l$CreditScoreRangeLower > 660), aes(x=LoanOriginalAmount, y=BorrowerRate, color=CreditScoreRangeLower)) +geom_point(alpha=0.1, position='jitter')  + scale_colour_gradient(low="blue", high="pink")
+```
+
+Excluding the 1st quartile, one can see that the borrowers with higher credit scores typically have higher loan amounts and low cost of borrowing (interest rate).
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+
+When looking at the loan amounts vs cost (interest rate), the credit scores demarcated borrowers by credit worthiness. The loan amounts by term showed that the originated more 
+
+### Were there any interesting or surprising interactions between features?
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+
+```
+
+### Description One
+
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+
+```
+
+### Description Two
+
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+
+```
+
+### Description Three
+
+------
+
+# Reflection
