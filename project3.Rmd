@@ -117,7 +117,7 @@ ggplot(data=l, aes(x=LoanYear)) +geom_bar()
 
 I decomposed loan origination date using lubridate and plotted by month and year.
 I observed seasonality in the loans by month by during the holiday season. 
-It is also interesting in the loans by year plot that the loans dropped off in 2009. I would guess that is a supeopley side shortage due to the Financial Crisis. What do you think? (Hint: I'm wrong.)
+It is also interesting in the loans by year plot that the loans dropped off in 2009. I would guess that is a supply side shortage due to the Financial Crisis. What do you think? (Hint: I'm wrong.)
 
 
 ```{r, Status, echo=FALSE, message=FALSE , warning=FALSE}
@@ -193,7 +193,7 @@ ggplot(data=Defaulted, aes(x=LoanYear, y=DefaultedPercent, group=1)) + geom_line
 
 ```
 
-I created the variable DefaultedPercent to show default rates over each year. Prosper default rates seems to have decreased dramatically over the years. 
+I created the variable DefaultedPercent (# of defaulted loans / # total loans) to show default rates over each year. Prosper default rates seems to have decreased dramatically over the years. 
 
 ```{r, States, echo=FALSE, message=FALSE , warning=FALSE}
 topstates <- l  %>% group_by(BorrowerState)  %>% summarise(count=n()) %>% arrange(desc(count)) %>% top_n(5)
@@ -219,7 +219,7 @@ print('Is the borrower a homeowner? ')
 summary(l$IsBorrowerHomeowner)
 ```
 
-Demographic is mostly employed and about half are homeowners.
+Borrowers are mostly employed and about half are homeowners.
 
 
 # Univariate Analysis
@@ -385,7 +385,8 @@ For comparison, aggregate loans amounts dips in 2009 and increases sharply in 20
 ggplot(data=l, aes(x=ldate, y=LoanOriginalAmount)) +geom_bar(stat='identity') + xlab("")
 ```
 
-Investigating further, I graphed every loan by date, it shows a gap in service between November 2008 and July 2009. After doing some research on Wikipedia, there was a cease and desist from the SEC regarding the p2p lending model. 
+Investigating further, I graphed every loan by date, it shows a gap in service between November 2008 and July 2009. After doing some research on Wikipedia, there was a cease and desist from the SEC regarding the p2p lending model. The data also only goes until March 2014.
+
 
 ```{r,  loan amt by month, echo=FALSE, message=FALSE , warning=FALSE }
 ggplot(data=l, aes(x=LoanMonth,y=LoanOriginalAmount))+ geom_boxplot()
@@ -456,7 +457,7 @@ ggplot(data=l, aes(x=Term,y=CreditScoreRangeLower))+ geom_boxplot() +ylim(450, 9
 
 ### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
 
-I observed that in 2009 there was a large dip in loan origination. After further investigation, it was related to a cease and desist order by the SEC regarding the nature of the P2P lending model.  
+I observed that in 2008-2009 there was a large dip in loan origination. After further investigation, it was related to a cease and desist order by the SEC regarding the nature of the P2P lending model. But after they opened again, there has been impressive growth topping out at $300 million in loans in 2013 and close to $150 million by March of 2014 (partial year)
 
 ### What was the strongest relationship you found?
 
@@ -472,9 +473,47 @@ ggplot(data=subset(l, l$CreditScoreRangeLower > 660), aes(x=LoanOriginalAmount, 
 The borrowers with high credit scores are on the bottom right. They generally have lower interest rates and larger loan amounts. I subsetted only credit scores from 660 (1st quartile) and above for better visual presentation. 
 
 
+```{r,  loan normalized by credit score by income range , echo=FALSE, message=FALSE , warning=FALSE}
+
+
+ggplot(data=l, aes(y=LoanOriginalAmount*CreditScoreRangeLower/850, x=IncomeRange, fill=IncomeRange )) +geom_boxplot()+scale_x_discrete(labels="")
+```
+
+I normalized the loan amounts by multiplying by their credit score and dividing by 850 (the best achievable score). The results do not differ to much from just using the loan amounts. 
+
+
+```{r,  debt coverage , echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=subset(l, l$IncomeRange != '$0'), aes(x=LoanYear, y= MonthlyLoanPayment/StatedMonthlyIncome, fill=IncomeRange)) +geom_boxplot() +ylim(0, 0.1) +facet_wrap(~IncomeRange)
+```
+
+In this plot, I divided MonthlyLoanPayment by StatedMonthlyIncome see what the debt coverage ratio would be by year and faceted by IncomeRange. It seems most of the borrowers with lower income ranges take on larger loans and all income ranges have an uptick in the most recent years.
+
+
+```{r,  di ratio , echo=FALSE, message=FALSE , warning=FALSE}
+
+ggplot(data=subset(l, l$IncomeRange != '$0'), aes(x=LoanYear, y= DebtToIncomeRatio, fill=IncomeRange)) +geom_boxplot() +ylim(0, .5) +facet_wrap(~IncomeRange)
+
+```
+
+Comparing DI ratio, most of the borrowers seem to have DI ratio close to 20-30% with a uptick in the most recent years. The $100k + income range have noticeably lower DI ratio at around 15-20%.   
+
+
+```{r, loan amt over year by income, echo=FALSE, message=FALSE , warning=FALSE}
+byyear <- l %>%
+  group_by(LoanYear, IncomeRange) %>%
+    summarise(DollarTotal=sum(LoanOriginalAmount), CountTotal=n()) %>%
+  arrange(desc(DollarTotal, CountTotal))
+
+ggplot(data=subset(byyear, byyear$IncomeRange != '$0'), aes(x=LoanYear, y=DollarTotal, fill=IncomeRange)) +geom_bar(stat='identity') + scale_fill_discrete(name="Income Range")+ggtitle("Loan Amount by Year and Income Range") +facet_wrap(~IncomeRange)
+
+```
+
+Looking at Income Ranges it looks like the uptick in loans in 2012-2013 grew primarily in $50-75k, $75-100k and $100k+. 
+
+
 ```{r,  loan amt over year by cat, echo=FALSE, message=FALSE , warning=FALSE}
 byyear <- l %>%
-  group_by(LoanYear, ListingCategory..numeric.) %>%
+  group_by(LoanYear, ListingCategory..numeric., IncomeRange) %>%
     summarise(DollarTotal=sum(LoanOriginalAmount), CountTotal=n()) %>%
   arrange(desc(DollarTotal, CountTotal))
 
@@ -485,49 +524,66 @@ ggplot(data=byyear, aes(x=LoanYear, y=DollarTotal, fill=ListingCategory..numeric
 I bucketed categories by year and you can clearly see that it looks like pre-2008 they did not capture the loan category and debt consolidation dominated the cateogory every year subsequently.
 
 
-```{r,  loan amt vs interest rate by credit score, echo=FALSE, message=FALSE , warning=FALSE}
-ggplot(data=subset(l, l$CreditScoreRangeLower < 880 & l$CreditScoreRangeLower > 660), aes(x=LoanOriginalAmount, y=BorrowerRate, color=CreditScoreRangeLower)) +geom_point(alpha=0.1, position='jitter')  + scale_colour_gradient(low="blue", high="pink")
-```
 
-Excluding the 1st quartile, one can see that the borrowers with higher credit scores typically have higher loan amounts and low cost of borrowing (interest rate).
+
 
 # Multivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
 
-When looking at the loan amounts vs cost (interest rate), the credit scores demarcated borrowers by credit worthiness. The loan amounts by term showed that the originated more 
+When looking at the loan amounts vs cost (interest rate), the credit scores demarcated borrowers by credit worthiness. I looked at loan amounts (normalized by credit score)  vs income ranges and saw that the higher the income, the larger the loans amounts on average. 
 
 ### Were there any interesting or surprising interactions between features?
 
-### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+Investigating further, I looked at DI ratio and debt coverage ratio and observed the higher the income, the lower the percentage of debt. Additionally, it appears the platform after a few years of maturity is beginning to lend to slight more indebted borrowers in the income ranges of $50-75k, $75-100k and $100k+. 
+Looking at the debt categories, it seemed like they didn't collect this information before 2007. But the recent uptick of lending 
+is mostly in debt consolidation.
+
 
 ------
 
 # Final Plots and Summary
 
 ### Plot One
-```{r echo=FALSE, Plot_One}
-
+```{r, Borrowers segmentation Final, echo=FALSE, message=FALSE , warning=FALSE}
+ggplot(data=subset(l, l$CreditScoreRangeLower > 660), aes(x=BorrowerRate, y=LoanOriginalAmount, color=CreditScoreRangeLower)) +geom_point(alpha=0.5, position='jitter') + scale_colour_gradient(low="blue", high="red") +ggtitle("Loan Amount by Credit Score and Interest Rate") +facet_wrap(~LoanYear)
 ```
 
+
 ### Description One
+The borrowers with high credit scores are in red on the left. They generally have lower interest rates and larger loan amounts. I subsetted only credit scores from 660 (1st quartile) and above for better visual presentation. And this shows that as the lending platform matured, the overal risk exposure increased. In 2014, much more blue (credit score ~700) borrowers. 
+
 
 
 ### Plot Two
-```{r echo=FALSE, Plot_Two}
+```{r,  Debt Category Final, echo=FALSE, message=FALSE , warning=FALSE}
+
+ggplot(data=subset(l, l$DebtToIncomeRatio < .4), aes(x=BorrowerRate, y=LoanOriginalAmount, color=DebtToIncomeRatio)) +geom_point(alpha=0.5, position='jitter') +facet_wrap(~LoanYear) + scale_colour_gradient(low="green", high="red") +ggtitle("Loan Amount by DI Ratio and Interest Rate")
 
 ```
 
+
+
 ### Description Two
+Looking at DI (debt to income) ratio, it illustrates a picture of increased loan sizing, especially at lower borrowing rates (2013-2014) as the platform matured and defaults rate were decreasing (graphed before).
+
 
 
 ### Plot Three
-```{r echo=FALSE, Plot_Three}
+```{r,  credit score by income Final, echo=FALSE, message=FALSE , warning=FALSE}
+delin <- l[grep("Past Due", l$LoanStatus),] # only delinquent
+
+ggplot(data=subset(delin, delin$IncomeRange != '$0'), aes(x=LoanYear, y=CreditScoreRangeLower)) +geom_point(aes(color=LoanOriginalAmount),size=2.5,alpha=0.7, position='jitter') +facet_wrap(~IncomeRange) + scale_colour_gradient(low="blue", high="red") +ggtitle("Delinquent loan exposure summary")
 
 ```
 
+
 ### Description Three
+I subsetted only deliquent loans (total count: 2067) to look at their at risk loans. It appears the majority of their delinquencies are clustered in 2012-2013 to with borrowers income range $25k-50k, $50-75k with credit scores 650-750. 
+
 
 ------
 
 # Reflection
+
+
