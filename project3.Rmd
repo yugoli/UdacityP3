@@ -1,6 +1,6 @@
 Project 3 - Exploring Prosper Loan Data by Li Liang
 ========================================================
-I chose the Prosper loan data for project 3. I wanted to explore the p2p lender's data to find insights related to the borrowers and the loans they broker. At quick glance, there are over 100k rows of loans and 81 variables. I initally choose way too many variables (30+) and through exploratory analysis, whittled it down to 20 variables and even created a few variables. Let's begin.
+I chose the Prosper loan data for project 3. I wanted to explore the P2P lender's data to find insights related to the borrowers and the loans they broker. At quick glance, there are over 100k rows of loans and 81 variables. I initally choose way too many variables (30+) and through exploratory analysis, whittled it down to 20 variables and even created a few variables. Let's begin.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
 library(dplyr)
@@ -143,7 +143,7 @@ Income range is mostly in the middle from $25k-75k with mostly 3 year loans.
 ggplot(data=l, aes(x=ldate, fill=l$Term)) +geom_bar() + scale_fill_discrete(name="Loan Term (Months)") + xlab("")
 ```
 
-Graph of loan term by year.
+Graph of loan term by year. Dominated by 3 year loans. 
 
 
 ```{r,  Loan Category, echo=FALSE, message=FALSE , warning=FALSE}
@@ -385,7 +385,7 @@ For comparison, aggregate loans amounts dips in 2009 and increases sharply in 20
 ggplot(data=l, aes(x=ldate, y=LoanOriginalAmount)) +geom_bar(stat='identity') + xlab("")
 ```
 
-Investigating further, I graphed every loan by date, it shows a gap in service between November 2008 and July 2009. After doing some research on Wikipedia, there was a cease and desist from the SEC regarding the p2p lending model. The data also only goes until March 2014.
+Investigating further, I graphed every loan by date, it shows a gap in service between November 2008 and July 2009. After doing some research on Wikipedia, there was a cease and desist from the SEC regarding the P2P lending model. The data also only goes until March 2014.
 
 
 ```{r,  loan amt by month, echo=FALSE, message=FALSE , warning=FALSE }
