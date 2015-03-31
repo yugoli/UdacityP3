@@ -339,7 +339,7 @@ Slight positive correlation R^2 of -.33. The larger the loan, the higher the cre
 
 
 ```{r,   income v d/i ratio, echo=FALSE, message=FALSE , warning=FALSE}
-ggplot(data=l, aes(x=StatedMonthlyIncome, y=TotalMonthlyDebt)) +geom_point(alpha=0.1, size=1.5, position='jitter') + xlim(0, 15000) + ylim(0, 7000) + facet_wrap(~IsBorrowerHomeowner)
+ggplot(data=l, aes(x=StatedMonthlyIncome, y=TotalMonthlyDebt)) +geom_point(alpha=0.05, size=1.5, position='jitter') + xlim(0, 15000) + ylim(0, 7000) + facet_wrap(~IsBorrowerHomeowner)
 ```
 
 I plotted total monthly debt vs monthly income facet wrapped by IsBorrowerHomeowner. The homeowners have a higher dispersion whereas the non-homeowners are more concentrated under $5000 income. 
@@ -495,7 +495,7 @@ ggplot(data=subset(l, l$IncomeRange != '$0'), aes(x=LoanYear, y= DebtToIncomeRat
 
 ```
 
-Comparing DI ratio, most of the borrowers seem to have DI ratio close to 20-30% with a uptick in the most recent years. The $100k + income range have noticeably lower DI ratio at around 15-20%.   
+Comparing DI ratio, most of the borrowers seem to have DI ratio close to 20-30% with a uptick in the most recent years. The $100k + income range have noticeably lower DI ratio at around 15-20%. The variance is reduced as incomes increase. 
 
 
 ```{r, loan amt over year by income, echo=FALSE, message=FALSE , warning=FALSE}
@@ -546,7 +546,7 @@ is mostly in debt consolidation.
 
 ### Plot One
 ```{r, Borrowers segmentation Final, echo=FALSE, message=FALSE , warning=FALSE}
-ggplot(data=subset(l, l$CreditScoreRangeLower > 660), aes(x=BorrowerRate, y=LoanOriginalAmount, color=CreditScoreRangeLower)) +geom_point(alpha=0.5, position='jitter') + scale_colour_gradient(low="blue", high="red") +ggtitle("Loan Amount by Credit Score and Interest Rate") +facet_wrap(~LoanYear)
+ggplot(data=subset(l, l$CreditScoreRangeLower > 660), aes(x=BorrowerRate, y=LoanOriginalAmount, color=CreditScoreRangeLower)) +geom_point(alpha=0.1, position='jitter') + scale_colour_gradient(low="blue", high="red") +ggtitle("Loan Amount by Credit Score and Interest Rate") +facet_wrap(~LoanYear)
 ```
 
 
@@ -558,14 +558,13 @@ The borrowers with high credit scores are in red on the left. They generally hav
 ### Plot Two
 ```{r,  Debt Category Final, echo=FALSE, message=FALSE , warning=FALSE}
 
-ggplot(data=subset(l, l$DebtToIncomeRatio < .4), aes(x=BorrowerRate, y=LoanOriginalAmount, color=DebtToIncomeRatio)) +geom_point(alpha=0.5, position='jitter') +facet_wrap(~LoanYear) + scale_colour_gradient(low="green", high="red") +ggtitle("Loan Amount by DI Ratio and Interest Rate")
+ggplot(data=subset(l, l$DebtToIncomeRatio < .4 ), aes(x=BorrowerRate, y=LoanOriginalAmount, color=DebtToIncomeRatio)) +geom_point(alpha=0.1, position='jitter') +facet_wrap(~LoanYear) + scale_colour_gradient(low="green", high="red") +ggtitle("Loan Amount by DI Ratio and Interest Rate") +xlim( 0, 0.4)
 
 ```
 
 
-
 ### Description Two
-Looking at DI (debt to income) ratio, it illustrates a picture of increased loan sizing, especially at lower borrowing rates (2013-2014) as the platform matured and defaults rate were decreasing (graphed before).
+Looking at DI (debt to income) ratio, it illustrates a picture of increased loan sizing, especially at lower borrowing rates (2013-2014) as the platform matured and risk managment improves, the default rates were decreasing (graphed previously).
 
 
 
@@ -573,17 +572,21 @@ Looking at DI (debt to income) ratio, it illustrates a picture of increased loan
 ```{r,  credit score by income Final, echo=FALSE, message=FALSE , warning=FALSE}
 delin <- l[grep("Past Due", l$LoanStatus),] # only delinquent
 
-ggplot(data=subset(delin, delin$IncomeRange != '$0'), aes(x=LoanYear, y=CreditScoreRangeLower)) +geom_point(aes(color=LoanOriginalAmount),size=2.5,alpha=0.7, position='jitter') +facet_wrap(~IncomeRange) + scale_colour_gradient(low="blue", high="red") +ggtitle("Delinquent loan exposure summary")
+ggplot(data=subset(delin, delin$IncomeRange != '$0'), aes(y=LoanYear, x=LoanStatus)) +geom_point(aes(color=LoanStatus),size=3, alpha=0.5, position='jitter') +facet_wrap(~IncomeRange) +ggtitle("Delinquent loan exposure summary") +scale_colour_brewer(type="div", palette="Dark2") +scale_x_discrete(labels="")
 
 ```
 
 
 ### Description Three
-I subsetted only deliquent loans (total count: 2067) to look at their at risk loans. It appears the majority of their delinquencies are clustered in 2012-2013 to with borrowers income range $25k-50k, $50-75k with credit scores 650-750. 
+I subsetted only deliquent loans (total count: 2067) to look at their at exposure to more risky (delinquent) loans. It appears the majority of their delinquencies are clustered in 2012-2013, 1-15days past due and the borrowers have income ranges $25k-50k and $50-75k. 
 
 
 ------
 
 # Reflection
+
+The data set had nearly 114,000 loans from Nov 2005 - March 2014. Over the course of those years,  Prosper has made almost $1 trillion dollars in loans ($949,894,347 to be exact). 
+The difficulties I had with the data mainly stemmed from understanding the variables and then selecting the appropriate ones to analyze. I had to do an initial exploration of the data and even then I probably selected a bit too many. I initally wanted to create a model to see if I could model loans likely to be delinquent or default but I realize solving classification isn't until the machine learning course. I would love to see if a model could be learned and created. 
+From the data I selected, I saw them struggle initially with their first few years of loans. However, their business grew very quickly after the cease and desist by the SEC in 2009. Their main loan exposures are in debt consolidation and I'm sure the low interest rate environment has helped the supply of lenders looking for yield. This was a great learning experience about the P2P lending model and I'm glad Udacity gave me the opportunity access to this data.
 
 
