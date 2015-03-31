@@ -1,0 +1,7 @@
+http://rstudio-pubs-static.s3.amazonaws.com/11068_8bc42d6df61341b2bed45e9a9a3bf9f4.html
+http://www.inside-r.org/packages/cran/ggplot2/docs/scale_brewer
+http://docs.ggplot2.org/0.9.3.1/geom_bar.html
+http://docs.ggplot2.org/current/scale_continuous.html
+http://www.cookbook-r.com/Graphs/Facets_(ggplot2)/
+http://cran.r-project.org/web/packages/corrplot/vignettes/corrplot-intro.html
+http://stackoverflow.com/questions/17279027/ggplot2-visualizing-counts-of-points-plotted-on-top-of-each-other-stat-bin2d-or
