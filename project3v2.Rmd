@@ -486,7 +486,7 @@ ggplot(data=l, aes(x=BorrowerRate, fill=LoanYear)) + geom_bar(binwidth=0.01) +
 Taking a closer look at spike in the histogram of BorrowerRate, these high 
 interest loans were made mainly for debt consolidation in 2011-2012.
 
-```{r, closer look 2, echo=FALSE, message=FALSE , warning=FALSE}
+```{r, closer look 2, echo=FALSE, message=FALSE, fig.width = 8, fig.height = 10}
 
 #mypal(18) asks for 20 colors between red and blue for fill
 #http://stackoverflow.com/questions/16295440/r-ggplot-better-gradient-color
@@ -757,7 +757,7 @@ is mostly in debt consolidation.
 ggplot(data=subset(l, l$CreditScoreRangeLower > 660),aes(x=LoanOriginalAmount))+
   geom_bar(binwidth=500,alpha = 0.8, color = 'blue', fill = 'lightblue') +
   facet_wrap(~LoanYear) +  ggtitle("Loan Amount Distribution by Year") + 
-  xlab("Loan Original Amount") + ylab("Number of loans") 
+  xlab("Loan Original Amount ($)") + ylab("Number of loans") 
 ```
 
 
@@ -775,7 +775,7 @@ ggplot(data=subset(l, l$CreditScoreRangeLower > 660),
        aes(x=BorrowerRate, y=LoanOriginalAmount, color=CreditScoreRangeLower))+
   geom_point(alpha=0.1, position='jitter') +
   scale_colour_gradient("Credit Score Range", low="blue", high="red") + 
-  xlab("Borrower Rate") + ylab("Loan Original Amount") + 
+  xlab("Borrower Rate") + ylab("Loan Original Amount ($)") + 
   facet_wrap(~LoanYear)+ggtitle("Loan Amount by Credit Score and Interest Rate")
 ```
 
@@ -793,13 +793,12 @@ increased. In 2014, much more blue (credit score ~700) borrowers.
 ```{r,credit score by inc Final, echo=FALSE, fig.width = 10, fig.height = 10}
 delin <- l[grep("Past Due", l$LoanStatus),] # only delinquent
 
+
 ggplot(data=subset(delin, delin$IncomeRange != '$0'), 
-       aes(y=LoanYear, x=LoanStatus)) +
-  geom_point(aes(color=LoanStatus),size=3, alpha=0.5, position='jitter') +
+       aes(y=LoanYear, x=LoanOriginalAmount/10000)) +
+  geom_point(color='darkred', size=3, alpha=0.3, position='jitter') +
   facet_wrap(~IncomeRange) +ggtitle("Delinquent loan exposure summary") +
-  xlab("Loan Status") + ylab("Loan Year") +
-  scale_colour_brewer("Loan Status", type="seq") +
-  scale_x_discrete(labels="")
+  xlab("Loan Original Amount $'0,000") + ylab("Loan Year")
 
 ```
 
@@ -808,7 +807,7 @@ ggplot(data=subset(delin, delin$IncomeRange != '$0'),
 To expand on my delinquent loans count from before. I wanted to look at
 delinquent exposures across income ranges by year. It appears the majority
 of Prosper's delinquencies are clustered in 2012-2013, most borrowers have
-income ranges in $25k-50k and $50-75k.
+income ranges in $25k-50k and $50-75k and loan amounts under $5k.
 
 
 ------
